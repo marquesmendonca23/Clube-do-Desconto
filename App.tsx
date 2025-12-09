@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import PostDetails from './pages/PostDetails';
+import Admin from './pages/Admin';
 import { BLOG_POSTS } from './data';
 import { BlogPost, Category } from './types';
 
@@ -12,10 +13,31 @@ const CATEGORIES: Category[] = [
 
 function App() {
   // Simple State-based routing for SPA feel without complex router setup for this demo
-  const [view, setView] = useState<'home' | 'post'>('home');
+  const [view, setView] = useState<'home' | 'post' | 'admin'>('home');
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | 'Todos'>('Todos');
-  const [posts, setPosts] = useState<BlogPost[]>(BLOG_POSTS);
+  
+  // State initialization: Try local storage first, then fallback to mock data
+  const [posts, setPosts] = useState<BlogPost[]>(() => {
+    try {
+      const saved = localStorage.getItem('clube_desconto_posts');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load posts", e);
+    }
+    return BLOG_POSTS;
+  });
+
+  // Filtered posts for display
+  const [displayPosts, setDisplayPosts] = useState<BlogPost[]>(posts);
+
+  // Persistence Effect
+  useEffect(() => {
+    localStorage.setItem('clube_desconto_posts', JSON.stringify(posts));
+    // Update display posts when source changes (unless searching)
+    // For simplicity, we just reset display to full list on crud ops for now
+    setDisplayPosts(posts);
+  }, [posts]);
 
   // Scroll to top on view change
   useEffect(() => {
@@ -31,18 +53,19 @@ function App() {
     setActivePost(null);
     setView('home');
     setSelectedCategory('Todos');
-    setPosts(BLOG_POSTS); // Reset search
+    setDisplayPosts(posts); // Reset search
   };
 
   const handleSearch = (term: string) => {
     setView('home');
     const lowerTerm = term.toLowerCase();
-    const filtered = BLOG_POSTS.filter(p => 
+    const filtered = posts.filter(p => 
       p.title.toLowerCase().includes(lowerTerm) || 
       p.excerpt.toLowerCase().includes(lowerTerm) ||
       p.category.toLowerCase().includes(lowerTerm)
     );
-    setPosts(filtered);
+    setDisplayPosts(filtered);
+    
     // If searching specifically for a category name, select it visually too if match
     const catMatch = CATEGORIES.find(c => c.toLowerCase() === lowerTerm);
     if (catMatch) setSelectedCategory(catMatch);
@@ -56,12 +79,36 @@ function App() {
 
   const handleCategorySelect = (cat: Category | 'Todos') => {
     setSelectedCategory(cat);
-    // Ensure we are showing all posts logic-wise is handled in Home, 
-    // but if we were previously filtered by search, we might want to reset the list to full list first
-    // In this simple implementation, Home component handles filtering based on `posts` (which might be search result) AND `selectedCategory`.
-    // Let's reset `posts` to all BLOG_POSTS when clicking a category filter to clear search.
-    setPosts(BLOG_POSTS);
+    // When clicking category, we want to see all posts from that category, resetting any search
+    setDisplayPosts(posts);
   };
+
+  // CRUD Operations for Admin
+  const handleSavePost = (newPost: BlogPost) => {
+    setPosts(current => {
+      const exists = current.find(p => p.id === newPost.id);
+      if (exists) {
+        return current.map(p => p.id === newPost.id ? newPost : p);
+      } else {
+        return [newPost, ...current];
+      }
+    });
+  };
+
+  const handleDeletePost = (id: string) => {
+    setPosts(current => current.filter(p => p.id !== id));
+  };
+
+  if (view === 'admin') {
+    return (
+      <Admin 
+        posts={posts} 
+        onSave={handleSavePost}
+        onDelete={handleDeletePost}
+        onBack={() => setView('home')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
@@ -70,7 +117,7 @@ function App() {
       <div className="flex-grow">
         {view === 'home' ? (
           <Home 
-            posts={posts} 
+            posts={displayPosts} 
             onPostClick={handlePostClick} 
             categories={CATEGORIES}
             selectedCategory={selectedCategory}
@@ -86,7 +133,7 @@ function App() {
         )}
       </div>
 
-      <Footer />
+      <Footer onAdminClick={() => setView('admin')} />
     </div>
   );
 }

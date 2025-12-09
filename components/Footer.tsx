@@ -1,7 +1,11 @@
 import React from 'react';
-import { Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
+import { Facebook, Instagram, Twitter, MessageCircle, Lock } from 'lucide-react';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  onAdminClick?: () => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
   return (
     <footer className="bg-gray-900 text-gray-300 py-12">
       <div className="container mx-auto px-4">
@@ -57,8 +61,19 @@ const Footer: React.FC = () => {
 
         </div>
         
-        <div className="border-t border-gray-800 mt-12 pt-8 text-center text-xs text-gray-500">
+        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 gap-4">
           <p>&copy; {new Date().getFullYear()} Clube do Desconto. Todos os direitos reservados. As ofertas podem sofrer alteração de preço sem aviso prévio.</p>
+          
+          {/* Admin Entry Point */}
+          {onAdminClick && (
+            <button 
+              onClick={onAdminClick} 
+              className="flex items-center gap-1 opacity-30 hover:opacity-100 transition-opacity"
+              title="Acesso Administrativo"
+            >
+              <Lock size={12} /> Admin
+            </button>
+          )}
         </div>
       </div>
     </footer>
